@@ -1,9 +1,9 @@
 ---
-name: source-code-walkthrough
+name: codewalk
 description: Teach and explain source code by pasting real code with line-by-line, parameter-by-parameter commentary. Use this skill whenever the user wants to learn, understand, or be guided through source code — e.g. "带我读源码", "源码走读", "逐行讲解这个函数", "结合源码讲一下", "explain how this function works", "walk me through the code", "这个类/函数是怎么实现的", "我在学这个代码库", or any code-principle explanation where the user may not have the source open in front of them. Especially when the user is learning an unfamiliar codebase, is not fluent in the implementation language, or has previously expressed confusion at explanations that describe code without showing it.
 ---
 
-# Source Code Walkthrough（源码走读导师）
+# Codewalk（源码走读导师）
 
 把"看不见的代码"讲明白的唯一方法：**把真实源码贴到读者眼前，逐行走读**。
 
@@ -86,9 +86,11 @@ PutStart 进入
 | 有已完成副本 | fn_is_completed | 拒绝重写（幂等） |
 | 超时的半成品 | >30s 未 End | 进停尸房，允许重写 |
 
-### 第 4 步：参数逐个解释
+### 第 4 步：函数解剖——入参、局部变量、返回值、调用关系
 
-函数签名贴出后**立即**给参数表，说清每个参数的"身份"：
+函数签名贴出后，按需给出下面四件套。简答模式至少覆盖「入参」和「返回值」两个高频项；完整走读四件套都给。
+
+**① 入参**：每个参数的"身份"表——谁生成、生命周期、和其他参数的区别：
 
 | 参数 | 类型 | 含义 | 来源/去向 |
 |---|---|---|---|
@@ -97,6 +99,18 @@ PutStart 进入
 | slice_length | uint64_t | 对象总长 | client 侧已把 slice 求和 |
 
 身份类参数（各种 xx_id）要特别说明：谁生成、生命周期、和其他 id 的区别（"进程的身份证 vs 业务的户口本"）。用户极易在这里混淆。
+
+**② 局部变量**：点破"一眼看不出干什么"的关键局部变量——哨兵值（0 / 空 / 最大值）、标志位、缓存、临时句柄、迭代器。普通循环变量 `i` 不用提；但像"`seq` 是本次 launch 的唯一编号、0 被 FREE 哨兵占用"这种承载语义的变量必须讲。一句话点破角色即可，别逐变量罗列成流水账。
+
+**③ 返回值**：多返回值 / 多分支返回时用表格说清每个值的语义与后果，尤其 0/-1 之外的魔法值：
+
+| 返回值 | 语义 | 调用方如何处理 |
+|---|---|---|
+| 0 | 已暂存（未发送） | 继续 poll，下次 flush 再发 |
+| -EAGAIN | 槽全忙 | base 层排队，reap 时重提 |
+| -EIO | 致命失败 | fail qpair |
+
+**④ 调用关系**：一两句话交代它在调用图里的位置——**谁在什么场景调它**（上游触发时机），以及**它调哪些关键下游**（走读途中会跳进去的子函数）。读者由此知道这个函数不是孤岛，也预告了后面会讲到哪些函数。
 
 ### 第 5 步：语法就地补课
 
@@ -157,7 +171,10 @@ t=20041ms  线程B ★ 拿到锁   ← A 释放的同一毫秒，B 被唤醒
 
 - [ ] 每个被讨论的代码块都贴了真实源码？
 - [ ] 行号与实际文件核对过（不是凭印象写的）？贴码走读时注明"相对片段"？
-- [ ] 参数表完整，每个参数的身份（谁生成/生命周期/区别）说清了？
+- [ ] 入参身份（谁生成/生命周期/区别）说清了？
+- [ ] 关键局部变量（哨兵/标志/句柄）点破了？
+- [ ] 多返回值语义列清了？
+- [ ] 调用关系（谁调它 + 它调谁）交代了？
 - [ ] 读者可能不熟的语法就地补课了？多义关键字消歧了？
 - [ ] 呼应了本次学习旅程中已讲过的概念？
 - [ ] 走读模式有鸟瞰图、总结图、思考题？（简答模式不需要）
